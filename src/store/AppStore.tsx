@@ -20,6 +20,8 @@ export type Workout = {
   durationMin: number;
   difficulty: Difficulty;
   routeName?: string;
+  /** Saved when user finishes a session; omit/true = completed (legacy data). */
+  completed?: boolean;
 };
 
 export type Sex = "male" | "female";

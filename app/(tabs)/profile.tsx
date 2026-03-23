@@ -1,4 +1,6 @@
 import { useAppStore, type FitnessLevel, type Sex, type Units } from "@/src/store/AppStore";
+import { Ionicons } from "@expo/vector-icons";
+import { Slider } from "@miblanchard/react-native-slider";
 import React, { useEffect, useMemo, useState } from "react";
 import {
     KeyboardAvoidingView,
@@ -37,6 +39,10 @@ export default function ProfileScreen() {
 
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState(false);
+  const weeklyGoalNumber = Number(weeklyCalorieGoal) || 2000;
+  const estimatedWorkoutCalories =
+    fitnessLevel === "beginner" ? 300 : fitnessLevel === "intermediate" ? 450 : 600;
+  const estimatedWorkoutsPerWeek = Math.max(1, Math.round(weeklyGoalNumber / estimatedWorkoutCalories));
 
   useEffect(() => {
     // Keep local form in sync if profile changes externally
@@ -146,34 +152,61 @@ export default function ProfileScreen() {
     setTimeout(() => setSaved(false), 1500);
   };
 
-  const renderSegment = <T extends string>(
-    options: readonly T[],
+  const renderPills = <T extends string>(
+    options: readonly { value: T; label: string; icon: keyof typeof Ionicons.glyphMap }[],
     value: T,
     onChange: (v: T) => void
   ) => (
-    <View style={styles.segmentRow}>
+    <View style={styles.pillRow}>
       {options.map((opt) => {
-        const selected = opt === value;
+        const selected = opt.value === value;
         return (
           <Pressable
-            key={opt}
+            key={opt.value}
             onPress={() => {
-              onChange(opt);
+              onChange(opt.value);
               setDirty(true);
             }}
             style={[
-              styles.segmentChip,
-              selected && styles.segmentChipSelected,
+              styles.pillChip,
+              selected && styles.pillChipSelected,
             ]}
           >
-            <Text
-              style={[
-                styles.segmentLabel,
-                selected && styles.segmentLabelSelected,
-              ]}
-            >
-              {opt.charAt(0).toUpperCase() + opt.slice(1)}
-            </Text>
+            <Ionicons
+              name={opt.icon}
+              size={14}
+              style={styles.pillIcon}
+              color={selected ? "#FFFFFF" : "#6B7280"}
+            />
+            <Text style={[styles.pillLabel, selected && styles.pillLabelSelected]}>{opt.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+
+  const renderLabelPills = <T extends string>(
+    options: readonly { value: T; label: string }[],
+    value: T,
+    onChange: (v: T) => void
+  ) => (
+    <View style={styles.pillRow}>
+      {options.map((opt) => {
+        const selected = opt.value === value;
+        return (
+          <Pressable
+            key={String(opt.value)}
+            onPress={() => {
+              onChange(opt.value);
+              setDirty(true);
+            }}
+            style={[
+              styles.pillChip,
+              styles.pillChipGrow,
+              selected && styles.pillChipSelected,
+            ]}
+          >
+            <Text style={[styles.pillLabel, selected && styles.pillLabelSelected]}>{opt.label}</Text>
           </Pressable>
         );
       })}
@@ -183,24 +216,30 @@ export default function ProfileScreen() {
   const isSaveDisabled = !dirty || hasErrors;
 
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right", "bottom"]}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={80}
       >
-        <ScrollView contentContainerStyle={styles.container}>
-          <Text style={styles.screenTitle}>Profile</Text>
+        <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+          <Text style={styles.screenTitle}>Your Profile</Text>
+          <Text style={styles.screenSubtitle}>Used to personalize your routes</Text>
 
-          {/* Basics */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Basics</Text>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="person-circle-outline" size={18} color="#4F46E5" />
+              <Text style={styles.cardTitle}>Profile</Text>
+            </View>
+            <Text style={styles.helperText}>
+              We use these basics to personalize pace, route intensity, and calorie burn estimates.
+            </Text>
             <View style={styles.fieldRow}>
               <Text style={styles.label}>Name</Text>
               <TextInput
                 placeholder="Your name"
                 value={name}
-                onChangeText={(t) => {
+                onChangeText={(t: string) => {
                   setName(t);
                   setDirty(true);
                 }}
@@ -213,7 +252,7 @@ export default function ProfileScreen() {
               <Text style={styles.label}>Age</Text>
               <TextInput
                 value={age}
-                onChangeText={(t) => {
+                onChangeText={(t: string) => {
                   setAge(t.replace(/[^0-9]/g, ""));
                   setDirty(true);
                 }}
@@ -226,17 +265,33 @@ export default function ProfileScreen() {
 
             <View style={styles.fieldRow}>
               <Text style={styles.label}>Sex</Text>
-              {renderSegment<Sex>(["male", "female"], sex, setSex)}
+              {renderLabelPills<Sex>(
+                [
+                  { value: "male", label: "Male" },
+                  { value: "female", label: "Female" },
+                ],
+                sex,
+                setSex
+              )}
             </View>
           </View>
 
-          {/* Body */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Body</Text>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="body-outline" size={18} color="#4F46E5" />
+              <Text style={styles.cardTitle}>Body</Text>
+            </View>
 
             <View style={styles.fieldRow}>
               <Text style={styles.label}>Units</Text>
-              {renderSegment<Units>(["imperial", "metric"], units, setUnits)}
+              {renderPills<Units>(
+                [
+                  { value: "imperial", label: "Imperial", icon: "speedometer-outline" },
+                  { value: "metric", label: "Metric", icon: "analytics-outline" },
+                ],
+                units,
+                setUnits
+              )}
             </View>
 
             {units === "imperial" ? (
@@ -245,13 +300,13 @@ export default function ProfileScreen() {
                   <Text style={styles.label}>Height (in)</Text>
                   <TextInput
                     value={heightInInput}
-                    onChangeText={(t) => {
+                    onChangeText={(t: string) => {
                       setHeightInInput(t.replace(/[^0-9.]/g, ""));
                       setDirty(true);
                     }}
-                    keyboardType="numeric"
+                    keyboardType="decimal-pad"
                     style={styles.input}
-                    placeholder="Height in inches"
+                    placeholder="e.g. 68"
                     placeholderTextColor="#9CA3AF"
                   />
                 </View>
@@ -259,13 +314,13 @@ export default function ProfileScreen() {
                   <Text style={styles.label}>Weight (lbs)</Text>
                   <TextInput
                     value={weightLbsInput}
-                    onChangeText={(t) => {
+                    onChangeText={(t: string) => {
                       setWeightLbsInput(t.replace(/[^0-9.]/g, ""));
                       setDirty(true);
                     }}
-                    keyboardType="numeric"
+                    keyboardType="decimal-pad"
                     style={styles.input}
-                    placeholder="Weight in pounds"
+                    placeholder="e.g. 165"
                     placeholderTextColor="#9CA3AF"
                   />
                 </View>
@@ -276,13 +331,13 @@ export default function ProfileScreen() {
                   <Text style={styles.label}>Height (cm)</Text>
                   <TextInput
                     value={heightCmInput}
-                    onChangeText={(t) => {
+                    onChangeText={(t: string) => {
                       setHeightCmInput(t.replace(/[^0-9.]/g, ""));
                       setDirty(true);
                     }}
-                    keyboardType="numeric"
+                    keyboardType="decimal-pad"
                     style={styles.input}
-                    placeholder="Height in cm"
+                    placeholder="e.g. 175"
                     placeholderTextColor="#9CA3AF"
                   />
                 </View>
@@ -290,103 +345,154 @@ export default function ProfileScreen() {
                   <Text style={styles.label}>Weight (kg)</Text>
                   <TextInput
                     value={weightKgInput}
-                    onChangeText={(t) => {
+                    onChangeText={(t: string) => {
                       setWeightKgInput(t.replace(/[^0-9.]/g, ""));
                       setDirty(true);
                     }}
-                    keyboardType="numeric"
+                    keyboardType="decimal-pad"
                     style={styles.input}
-                    placeholder="Weight in kg"
+                    placeholder="e.g. 72"
                     placeholderTextColor="#9CA3AF"
                   />
                 </View>
               </>
             )}
+            <Text style={styles.helperText}>
+              Used to refine route distance recommendations and improve calorie calculation per route.
+            </Text>
           </View>
 
-          {/* Training */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Training</Text>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="barbell-outline" size={18} color="#4F46E5" />
+              <Text style={styles.cardTitle}>Training</Text>
+            </View>
+            <Text style={styles.helperText}>
+              Your level adjusts target difficulty so suggested routes challenge you without overreaching.
+            </Text>
             <View style={styles.fieldRow}>
               <Text style={styles.label}>Fitness Level</Text>
-              {renderSegment<FitnessLevel>(
-                ["beginner", "intermediate", "advanced"],
+              {renderPills<FitnessLevel>(
+                [
+                  { value: "beginner", label: "Beginner", icon: "leaf-outline" },
+                  { value: "intermediate", label: "Intermediate", icon: "flash-outline" },
+                  { value: "advanced", label: "Advanced", icon: "trophy-outline" },
+                ],
                 fitnessLevel,
                 setFitnessLevel
               )}
             </View>
           </View>
 
-          {/* Goals */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Goals</Text>
-            <View style={styles.fieldRow}>
-              <Text style={styles.label}>Weekly Calorie Goal</Text>
-              <TextInput
-                value={weeklyCalorieGoal}
-                onChangeText={(t) => {
-                  setWeeklyCalorieGoal(t.replace(/[^0-9]/g, ""));
-                  setDirty(true);
-                }}
-                keyboardType="number-pad"
-                style={styles.input}
-                placeholder="e.g. 2000"
-                placeholderTextColor="#9CA3AF"
-              />
+            <View style={styles.sectionHeader}>
+              <Ionicons name="flag-outline" size={18} color="#4F46E5" />
+              <Text style={styles.cardTitle}>Goals</Text>
             </View>
+            <Text style={styles.helperText}>
+              Weekly calorie targets guide route frequency suggestions and keep your training plan realistic.
+            </Text>
+            <View style={styles.goalRow}>
+              <Text style={styles.label}>Weekly Calorie Goal</Text>
+              <Text style={styles.goalValue}>{weeklyGoalNumber} kcal</Text>
+            </View>
+            <Slider
+              minimumValue={200}
+              maximumValue={10000}
+              step={100}
+              value={weeklyGoalNumber}
+              onValueChange={(v: number[]) => {
+                setWeeklyCalorieGoal(String(v[0]));
+                setDirty(true);
+              }}
+              minimumTrackTintColor="#4F46E5"
+              maximumTrackTintColor="#E5E7EB"
+              thumbTintColor="#4F46E5"
+              containerStyle={styles.slider}
+            />
+            <Text style={styles.workoutEstimate}>
+              ~{estimatedWorkoutsPerWeek} workouts/week
+            </Text>
           </View>
 
-          <View style={styles.saveRow}>
-            {saved && <Text style={styles.savedText}>Saved</Text>}
-            <Pressable
-              style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]}
-              onPress={handleSave}
-              disabled={isSaveDisabled}
-            >
-              <Text style={styles.saveButtonLabel}>Save</Text>
-            </Pressable>
-          </View>
+          <View style={styles.bottomSpacer} />
         </ScrollView>
+
+        <View style={styles.saveBar}>
+          <View>
+            {saved ? <Text style={styles.savedText}>Saved</Text> : null}
+            <Text style={styles.saveHint}>Save updates to recalculate route suggestions</Text>
+          </View>
+          <Pressable
+            style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]}
+            onPress={handleSave}
+            disabled={isSaveDisabled}
+          >
+            <Ionicons name="checkmark-circle-outline" size={16} color="#FFFFFF" />
+            <Text style={styles.saveButtonLabel}>Save Profile</Text>
+          </Pressable>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#F5F6FA",
+  },
   container: {
-    padding: 20,
-    paddingBottom: 32,
-    gap: 16,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    gap: 18,
   },
   screenTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: "800",
     color: "#111827",
-    marginBottom: 4,
+  },
+  screenSubtitle: {
+    fontSize: 14,
+    color: "#6B7280",
+    marginTop: 2,
+    marginBottom: 2,
   },
   card: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 18,
+    borderRadius: 20,
     padding: 16,
     shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 2,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   cardTitle: {
     fontSize: 16,
     fontWeight: "800",
     color: "#111827",
-    marginBottom: 10,
+  },
+  helperText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: "#6B7280",
+    marginTop: 8,
+    marginBottom: 12,
   },
   fieldRow: {
-    marginBottom: 12,
+    marginBottom: 14,
   },
   label: {
     fontSize: 13,
     fontWeight: "700",
     color: "#6B7280",
-    marginBottom: 4,
+    marginBottom: 6,
   },
   input: {
     borderRadius: 10,
@@ -398,51 +504,93 @@ const styles = StyleSheet.create({
     color: "#111827",
     backgroundColor: "#F9FAFB",
   },
-  segmentRow: {
+  pillRow: {
     flexDirection: "row",
-    gap: 8,
+    flexWrap: "wrap",
+    gap: 10,
     marginTop: 4,
   },
-  segmentChip: {
-    flex: 1,
+  pillChip: {
     paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: "#E5E7EB",
     backgroundColor: "#F9FAFB",
     alignItems: "center",
+    flexDirection: "row",
+    gap: 6,
   },
-  segmentChipSelected: {
-    backgroundColor: "#EEF2FF",
+  pillChipGrow: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: "center",
+  },
+  pillChipSelected: {
+    backgroundColor: "#4F46E5",
     borderColor: "#4F46E5",
   },
-  segmentLabel: {
+  pillIcon: {
+    marginTop: 1,
+  },
+  pillLabel: {
     fontSize: 13,
     fontWeight: "700",
     color: "#4B5563",
-    textTransform: "capitalize",
   },
-  segmentLabelSelected: {
-    color: "#111827",
+  pillLabelSelected: {
+    color: "#FFFFFF",
   },
-  saveRow: {
+  goalRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 8,
+  },
+  goalValue: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#111827",
+  },
+  slider: {
+    marginTop: 4,
+  },
+  workoutEstimate: {
+    marginTop: 6,
+    fontSize: 13,
+    color: "#4B5563",
+    fontWeight: "600",
+  },
+  bottomSpacer: {
+    height: 112,
+  },
+  saveBar: {
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 16,
+    backgroundColor: "rgba(255,255,255,0.98)",
   },
   savedText: {
     fontSize: 13,
     color: "#16A34A",
     fontWeight: "700",
   },
+  saveHint: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginTop: 2,
+    marginBottom: 10,
+  },
   saveButton: {
-    flex: 1,
-    marginLeft: 12,
+    width: "100%",
     backgroundColor: "#4F46E5",
-    borderRadius: 999,
-    paddingVertical: 12,
+    borderRadius: 16,
+    paddingVertical: 14,
     alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
   },
   saveButtonDisabled: {
     backgroundColor: "#9CA3AF",
